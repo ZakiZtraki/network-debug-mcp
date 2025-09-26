@@ -1,0 +1,13 @@
+services:
+  network-debug-mcp:
+    extends:
+      file: ../../common/docker/docker-compose.base.yml
+      service: network-debug-mcp
+    container_name: network-debug-mcp-claude
+    ports:
+      - "8001:8000"  # Expose MCP over SSE on host port 8001
+    env_file:
+      - .env
+    working_dir: /app
+    command: >
+      bash -lc "python3 netdebug_server.py"

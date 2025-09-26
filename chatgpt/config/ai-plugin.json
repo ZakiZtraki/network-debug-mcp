@@ -1,0 +1,17 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Network Debug Tools",
+  "name_for_model": "network_debug",
+  "description_for_human": "Access network debugging and analysis tools including nmap, tcpdump, ping, traceroute, and DNS tools.",
+  "description_for_model": "This plugin provides access to network debugging and analysis tools through a Kali Linux container. It allows you to perform network scanning with nmap, capture packets with tcpdump, test connectivity with ping, trace network routes, and perform DNS lookups. Use this plugin when you need to diagnose network issues, analyze network traffic, or gather information about network hosts and services.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://your-server-url.com/openapi.yaml"
+  },
+  "logo_url": "https://your-server-url.com/logo.png",
+  "contact_email": "your-email@example.com",
+  "legal_info_url": "https://your-server-url.com/legal"
+}

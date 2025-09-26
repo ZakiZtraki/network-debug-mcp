@@ -1,0 +1,245 @@
+openapi: 3.1.1
+info:
+  title: Network Debug MCP for ChatGPT
+  description: A Model Context Protocol (MCP) server providing network debugging and analysis tools through a Kali Linux container.
+  version: "1.0"
+servers:
+  - url: https://netdebug.zakitraki.com
+paths:
+  /nmap_scan:
+    post:
+      operationId: nmap_scan
+      summary: Perform network scanning with nmap
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target:
+                  type: string
+                  description: Target IP or hostname
+                scan_type:
+                  type: string
+                  description: Scan type (-sS, -sT, -sU, -sA, -sF, -sN, -sX, -sn)
+                  default: "-sS"
+                ports:
+                  type: string
+                  description: Port range (e.g., 22,80,443 or 1-1000)
+              required:
+                - target
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+  /tcpdump_capture:
+    post:
+      operationId: tcpdump_capture
+      summary: Capture network packets using tcpdump
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                interface:
+                  type: string
+                  description: Network interface to capture on
+                  default: "eth0"
+                count:
+                  type: string
+                  description: Number of packets to capture
+                  default: "10"
+                filter_expr:
+                  type: string
+                  description: Filter expression for tcpdump
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+  /ping_host:
+    post:
+      operationId: ping_host
+      summary: Ping a host to test connectivity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hostname:
+                  type: string
+                  description: Hostname or IP to ping
+                count:
+                  type: string
+                  description: Number of ping packets to send
+                  default: "4"
+              required:
+                - hostname
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+  /traceroute_host:
+    post:
+      operationId: traceroute_host
+      summary: Trace route to a host
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hostname:
+                  type: string
+                  description: Hostname or IP to trace
+                max_hops:
+                  type: string
+                  description: Maximum number of hops
+                  default: "30"
+              required:
+                - hostname
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+  /ip_addr_show:
+    post:
+      operationId: ip_addr_show
+      summary: Show network interfaces using ip addr
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                interface:
+                  type: string
+                  description: Specific interface to show (optional)
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+  /ip_route_show:
+    post:
+      operationId: ip_route_show
+      summary: Show routing table using ip route
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                table:
+                  type: string
+                  description: Routing table to show (main, local, all)
+                  default: "main"
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+  /nslookup_query:
+    post:
+      operationId: nslookup_query
+      summary: Perform DNS lookup using nslookup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hostname:
+                  type: string
+                  description: Hostname to lookup
+                record_type:
+                  type: string
+                  description: DNS record type (A, AAAA, MX, NS, TXT, PTR, CNAME)
+                  default: "A"
+              required:
+                - hostname
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string
+  /dig_query:
+    post:
+      operationId: dig_query
+      summary: Perform DNS lookup using dig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hostname:
+                  type: string
+                  description: Hostname to lookup
+                record_type:
+                  type: string
+                  description: DNS record type (A, AAAA, MX, NS, TXT, PTR, CNAME, SOA)
+                  default: "A"
+                dns_server:
+                  type: string
+                  description: DNS server to use (optional)
+              required:
+                - hostname
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: string

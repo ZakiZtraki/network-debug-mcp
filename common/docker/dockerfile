@@ -1,0 +1,71 @@
+FROM kalilinux/kali-rolling
+
+# Set non-interactive mode for apt
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-dev \
+    tcpdump \
+    tshark \
+    nmap \
+    arp-scan \
+    dnsutils \
+    net-tools \
+    iproute2 \
+    iptables \
+    nftables \
+    htop \
+    iotop \
+    nethogs \
+    curl \
+    traceroute \
+    iputils-ping \
+    sudo \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user for running the server
+RUN useradd -m -s /bin/bash -G sudo mcpuser && \
+    echo "mcpuser ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/mcpuser && \
+    chmod 0440 /etc/sudoers.d/mcpuser
+
+# Create directories for captures and logs
+RUN mkdir -p /home/mcpuser/captures /home/mcpuser/logs && \
+    chown -R mcpuser:mcpuser /home/mcpuser
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements file from common to ensure consistency
+COPY common/requirements.txt /app/requirements.txt
+
+# Install Python dependencies
+RUN pip3 install --no-cache-dir -r /app/requirements.txt
+
+# Copy server files
+COPY common/server/netdebug_server.py /app/
+COPY common/server/api_server.py /app/
+
+# Set permissions
+RUN chown -R mcpuser:mcpuser /app
+
+# Switch to non-root user
+USER mcpuser
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    MCP_SERVER_NAME=network-debug \
+    MCP_SERVER_VERSION=1.0.0 \
+    CAPTURE_DIR=/home/mcpuser/captures \
+    MAX_CAPTURE_SIZE=100M \
+    DEFAULT_TIMEOUT=30 \
+    LOG_DIR=/home/mcpuser/logs
+
+# Expose ports for MCP and API
+EXPOSE 8000 8080
+
+# Start the MCP server by default; compose files may override
+CMD ["python3", "netdebug_server.py"]

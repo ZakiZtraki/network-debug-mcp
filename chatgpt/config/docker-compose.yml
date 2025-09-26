@@ -1,0 +1,14 @@
+services:
+  network-debug-mcp:
+    extends:
+      file: ../../common/docker/docker-compose.base.yml
+      service: network-debug-mcp
+    container_name: network-debug-mcp-chatgpt
+    ports:
+      - "8000:8000"  # MCP over SSE for ChatGPT
+      - "8080:8080"  # REST API
+    env_file:
+      - .env
+    working_dir: /app
+    command: >
+      bash -lc "python3 api_server.py & python3 netdebug_server.py"

@@ -1,0 +1,38 @@
+# Base Docker Compose service used by both ChatGPT and Claude setups.
+# This builds the image from common/docker/dockerfile and mounts shared volumes.
+#
+# Deployment variants (reference):
+# - Prebuilt image: use image: ghcr.io/zakiztraki/kali-net-mcp:latest instead of build
+# - Linux host networking: add `network_mode: host` and remove ports to get L2 accuracy
+# - Macvlan (advanced L2 on LAN): attach to an external macvlan network and omit ports
+#   See previously provided root examples for exact options.
+
+services:
+  network-debug-mcp:
+    # Default: build from source
+    build:
+      context: ../../
+      dockerfile: common/docker/dockerfile
+    restart: unless-stopped
+
+    # Capabilities required by network tools
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+      - SYS_PTRACE
+
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+      - no-new-privileges=false
+
+    # Some tools require privileged mode inside Kali
+    privileged: true
+
+    # Shared volumes for captures and logs
+    volumes:
+      - ../../captures:/home/mcpuser/captures
+      - ../../logs:/home/mcpuser/logs
+
+    # Note: Port mappings, commands, and environment variables are defined in client-specific compose files
+    # (chatgpt/config/docker-compose.yml and claude/config/docker-compose.yml)

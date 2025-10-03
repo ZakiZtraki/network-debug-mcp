@@ -9,9 +9,9 @@
   },
   "api": {
     "type": "openapi",
-    "url": "https://netdebug.zakitraki.com/config/openapi.yaml"
+    "url": "https://netdebug.zenmedia.live/config/openapi.yaml"
   },
-  "logo_url": "https://netdebug.zakitraki.com/config/logo.png",
-  "contact_email": "admin@zakitraki.com",
-  "legal_info_url": "https://netdebug.zakitraki.com/config/legal"
+  "logo_url": "https://netdebug.zenmedia.live/config/logo.png",
+  "contact_email": "admin@zenmedia.live",
+  "legal_info_url": "https://netdebug.zenmedia.live/config/legal"
 }

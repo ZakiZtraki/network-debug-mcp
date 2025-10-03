@@ -55,6 +55,15 @@ perf_logger = logging.getLogger("netdebug-server.performance")
 # Tool usage tracking
 tool_usage = {}
 
+# Pre-build SSE Cache-Control header to avoid recalculating
+DEFAULT_SSE_HEADERS = {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "Expires": "0",
+    "X-Accel-Buffering": "no",
+}
+
 def log_tool_usage(tool_name, params=None):
     """Track tool usage for analytics"""
     if tool_name not in tool_usage:
@@ -373,13 +382,13 @@ def ip_route_show(table: str = "main"):
     cmd = ["ip", "route", "show"]
     if table != "main":
         cmd.extend(["table", table])
-    
+
     result = run_command_sync(cmd)
     return f"Routing table ({table}):\n{result}"
 
 @mcp.tool()
 def ip_addr_show(interface: str = ""):
-    """Show network interfaces using ip addr"""
+    """Show network interface information using ip addr"""
     interface = sanitize_input(interface)
     
     cmd = ["ip", "addr", "show"]
@@ -387,44 +396,11 @@ def ip_addr_show(interface: str = ""):
         cmd.append(interface)
     
     result = run_command_sync(cmd)
-    return f"Network interfaces:\n{result}"
-
-@mcp.tool()
-def ping_host(hostname: str = "", count: str = "4"):
-    """Ping a host to test connectivity"""
-    log_tool_usage("ping_host", {"hostname": hostname, "count": count})
-    logger.info(f"ping_host called: hostname={hostname}, count={count}")
-
-    hostname = sanitize_input(hostname)
-    count = sanitize_input(count)
-
-    if not hostname:
-        logger.warning("ping_host: No hostname specified")
-        return "Error: Hostname or IP required"
-
-    if not (sanitize_ip(hostname) or validate_domain(hostname)):
-        logger.warning(f"ping_host: Invalid hostname format: {hostname}")
-        return "Error: Invalid hostname format"
-
-    try:
-        count_num = int(count) if count else 4
-        count_num = min(count_num, 20)  # Limit ping count
-        logger.info(f"Ping count set to: {count_num}")
-    except ValueError:
-        count_num = 4
-        logger.warning("Invalid count parameter, using default: 4")
-
-    cmd = ["ping", "-c", str(count_num), hostname]
-    
-    security_logger.info(f"Ping initiated: target={hostname}, count={count_num}")
-    result = run_command_sync(cmd, timeout=30)
-    logger.info(f"ping_host completed for: {hostname}")
-
-    return f"Ping results for {hostname}:\n{result}"
+    return f"IP address information{f' for {interface}' if interface else ''}:\n{result}"
 
 @mcp.tool()
 def traceroute_host(hostname: str = "", max_hops: str = "30"):
-    """Trace route to a host"""
+    """Perform traceroute to a host"""
     log_tool_usage("traceroute_host", {"hostname": hostname, "max_hops": max_hops})
     logger.info(f"traceroute_host called: hostname={hostname}, max_hops={max_hops}")
 
@@ -432,171 +408,94 @@ def traceroute_host(hostname: str = "", max_hops: str = "30"):
     max_hops = sanitize_input(max_hops)
 
     if not hostname:
-        logger.warning("traceroute_host: No hostname specified")
-        return "Error: Hostname or IP required"
+        return "Error: Hostname is required"
 
-    if not (sanitize_ip(hostname) or validate_domain(hostname)):
-        logger.warning(f"traceroute_host: Invalid hostname format: {hostname}")
+    if not re.match(r'^[a-zA-Z0-9.-]+$', hostname):
         return "Error: Invalid hostname format"
 
-    try:
-        hops_num = int(max_hops) if max_hops else 30
-        hops_num = min(hops_num, 30)  # Limit max hops
-        logger.info(f"Traceroute max hops set to: {hops_num}")
-    except ValueError:
-        hops_num = 30
-        logger.warning("Invalid max_hops parameter, using default: 30")
+    cmd = ["traceroute", "-m", max_hops, hostname]
+    result = run_command_sync(cmd, timeout=120)
 
-    cmd = ["traceroute", "-m", str(hops_num), hostname]
-    
-    security_logger.info(f"Traceroute initiated: target={hostname}, max_hops={hops_num}")
-    result = run_command_sync(cmd, timeout=60)
-    logger.info(f"traceroute_host completed for: {hostname}")
-
-    return f"Traceroute results for {hostname}:\n{result}"
+    return f"Traceroute to {hostname} (max hops: {max_hops}):\n{result}"
 
 @mcp.tool()
-def nslookup_query(hostname: str = "", record_type: str = "A"):
-    """Perform DNS lookup using nslookup"""
-    log_tool_usage("nslookup_query", {"hostname": hostname, "record_type": record_type})
-    logger.info(f"nslookup_query called: hostname={hostname}, record_type={record_type}")
+def ping_host(hostname: str = "", count: str = "4"):
+    """Ping a host"""
+    log_tool_usage("ping_host", {"hostname": hostname, "count": count})
+    logger.info(f"ping_host called: hostname={hostname}, count={count}")
 
     hostname = sanitize_input(hostname)
-    record_type = sanitize_input(record_type)
+    count = sanitize_input(count)
 
     if not hostname:
-        logger.warning("nslookup_query: No hostname specified")
-        return "Error: Hostname required"
+        return "Error: Hostname is required"
 
-    if not validate_domain(hostname):
-        logger.warning(f"nslookup_query: Invalid hostname format: {hostname}")
-        return "Error: Invalid hostname format"
+    cmd = ["ping", "-c", count, hostname]
+    result = run_command_sync(cmd)
 
-    # Validate record type
-    allowed_types = ["A", "AAAA", "MX", "NS", "TXT", "PTR", "CNAME"]
-    if record_type not in allowed_types:
-        record_type = "A"
-        logger.warning(f"nslookup_query: Invalid record type, using default: A")
-
-    cmd = ["nslookup", "-type=" + record_type, hostname]
-    
-    security_logger.info(f"DNS lookup initiated: hostname={hostname}, type={record_type}")
-    result = run_command_sync(cmd, timeout=30)
-    logger.info(f"nslookup_query completed for: {hostname}")
-
-    return f"DNS lookup results for {hostname} ({record_type}):\n{result}"
+    return f"Ping results for {hostname}:\n{result}"
 
 @mcp.tool()
 def dig_query(hostname: str = "", record_type: str = "A", dns_server: str = ""):
-    """Perform DNS lookup using dig"""
+    """Perform a DNS lookup using dig"""
     log_tool_usage("dig_query", {"hostname": hostname, "record_type": record_type, "dns_server": dns_server})
     logger.info(f"dig_query called: hostname={hostname}, record_type={record_type}, dns_server={dns_server}")
 
     hostname = sanitize_input(hostname)
-    record_type = sanitize_input(record_type)
+    record_type = sanitize_input(record_type).upper() or "A"
     dns_server = sanitize_input(dns_server)
 
     if not hostname:
-        logger.warning("dig_query: No hostname specified")
-        return "Error: Hostname required"
+        return "Error: Hostname is required"
 
-    if not validate_domain(hostname):
-        logger.warning(f"dig_query: Invalid hostname format: {hostname}")
-        return "Error: Invalid hostname format"
+    cmd = ["dig", "@" + dns_server if dns_server else "@[default]", hostname, record_type]
+    if not dns_server:
+        cmd = ["dig", hostname, record_type]
+    result = run_command_sync(cmd)
 
-    # Validate record type
-    allowed_types = ["A", "AAAA", "MX", "NS", "TXT", "PTR", "CNAME", "SOA"]
-    if record_type not in allowed_types:
-        record_type = "A"
-        logger.warning(f"dig_query: Invalid record type, using default: A")
-
-    cmd = ["dig", hostname, record_type]
-    
-    # Add DNS server if specified
-    if dns_server and (sanitize_ip(dns_server) or validate_domain(dns_server)):
-        cmd.extend(["@" + dns_server])
-        logger.info(f"dig_query: Using DNS server: {dns_server}")
-    elif dns_server:
-        logger.warning(f"dig_query: Invalid DNS server format: {dns_server}")
-
-    security_logger.info(f"DNS lookup initiated: hostname={hostname}, type={record_type}, server={dns_server or 'default'}")
-    result = run_command_sync(cmd, timeout=30)
-    logger.info(f"dig_query completed for: {hostname}")
-
-    return f"DNS lookup results for {hostname} ({record_type}):\n{result}"
+    return f"dig {hostname} {record_type}:\n{result}"
 
 @mcp.tool()
-def curl_test(url: str = "", method: str = "GET", headers: str = "", data: str = ""):
-    """Test HTTP/HTTPS connectivity using curl"""
-    log_tool_usage("curl_test", {"url": url, "method": method, "headers": headers, "data": data})
-    logger.info(f"curl_test called: url={url}, method={method}")
+def nslookup_query(hostname: str = "", record_type: str = "A"):
+    """Perform a DNS lookup using nslookup"""
+    log_tool_usage("nslookup_query", {"hostname": hostname, "record_type": record_type})
+    logger.info(f"nslookup_query called: hostname={hostname}, record_type={record_type}")
 
-    url = sanitize_input(url)
-    method = sanitize_input(method)
-    headers = sanitize_input(headers)
-    data = sanitize_input(data)
+    hostname = sanitize_input(hostname)
+    record_type = sanitize_input(record_type).upper() or "A"
 
-    if not url:
-        logger.warning("curl_test: No URL specified")
-        return "Error: URL required"
+    if not hostname:
+        return "Error: Hostname is required"
 
-    # Basic URL validation
-    if not url.startswith(("http://", "https://")):
-        logger.warning(f"curl_test: Invalid URL format: {url}")
-        return "Error: URL must start with http:// or https://"
+    cmd = ["nslookup", "-type=" + record_type, hostname]
+    result = run_command_sync(cmd)
 
-    cmd = ["curl", "-s", "-v"]
-    
-    # Add method if specified
-    allowed_methods = ["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"]
-    if method in allowed_methods:
-        cmd.extend(["-X", method])
-    else:
-        logger.warning(f"curl_test: Invalid method {method}, using default: GET")
-    
-    # Add headers if specified
-    if headers:
-        for header in headers.split(','):
-            cmd.extend(["-H", header.strip()])
-    
-    # Add data if specified and method is appropriate
-    if data and method in ["POST", "PUT"]:
-        cmd.extend(["-d", data])
-    
-    cmd.append(url)
-    
-    security_logger.info(f"HTTP request initiated: url={url}, method={method or 'GET'}")
-    result = run_command_sync(cmd, timeout=30)
-    logger.info(f"curl_test completed for: {url}")
-
-    return f"HTTP request results for {url}:\n{result}"
+    return f"nslookup {hostname} {record_type}:\n{result}"
 
 @mcp.tool()
 def process_network_usage():
-    """Show processes with network connections"""
+    """List processes with active network connections and their bandwidth usage"""
     log_tool_usage("process_network_usage")
     logger.info("process_network_usage called")
 
-    cmd = ["ss", "-tulpn"]
+    cmd = ["lsof", "-i", "-P", "-n"]
     result = run_command_sync(cmd, timeout=30)
-    
-    # Extract process information
+
+    if "COMMAND" not in result:
+        return "No processes with network connections found"
+
+    # Parse output to get PID and command names
     processes = {}
-    for line in result.split('\n'):
-        if 'users:' in line:
-            parts = line.split('users:')
-            if len(parts) > 1:
-                process_info = parts[1].strip()
-                pid_match = re.search(r'pid=(\d+)', process_info)
-                name_match = re.search(r'\"([^\"]+)\"', process_info)
-                
-                if pid_match and name_match:
-                    pid = pid_match.group(1)
-                    name = name_match.group(1)
-                    
-                    if pid not in processes:
-                        processes[pid] = name
-    
+    for line in result.split('\n')[1:]:
+        parts = re.split(r'\s+', line.strip())
+        if len(parts) >= 2:
+            pid = parts[1]
+            command = parts[0]
+            processes[pid] = command
+
+    if not processes:
+        return "No processes with network connections found"
+
     # Get additional details for each process
     detailed_output = ["Processes with network connections:"]
     for pid, name in processes.items():
@@ -652,7 +551,26 @@ if __name__ == "__main__":
             # Fallback for SDKs where SSE doesn't accept host/port
             logger.warning("FastMCP.run signature doesn't accept host/port for this transport; applying fallback")
             if MCP_TRANSPORT == "sse" and hasattr(mcp, "start_server"):
-                mcp.start_server(host=MCP_HOST, port=MCP_PORT)
+                # Start server and ensure SSE-specific headers are applied
+                server = mcp.start_server(host=MCP_HOST, port=MCP_PORT)
+                if hasattr(server, "add_middleware"):
+                    try:
+                        from starlette.middleware.base import BaseHTTPMiddleware
+                        from starlette.types import ASGIApp, Receive, Scope, Send
+
+                        class SSEHeadersMiddleware(BaseHTTPMiddleware):
+                            async def dispatch(self, request, call_next):
+                                response = await call_next(request)
+                                for header_key, header_value in DEFAULT_SSE_HEADERS.items():
+                                    response.headers.setdefault(header_key, header_value)
+                                return response
+
+                        server.add_middleware(SSEHeadersMiddleware)
+                        logger.info("SSE headers middleware applied successfully")
+                    except Exception as middleware_exception:
+                        logger.warning(f"Unable to apply SSE headers middleware: {middleware_exception}")
+                else:
+                    logger.warning("Server object does not support add_middleware; SSE headers must be ensured upstream")
             else:
                 mcp.run(transport=MCP_TRANSPORT)
         # Should not reach here in normal operation

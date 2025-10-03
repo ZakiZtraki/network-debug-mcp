@@ -3,8 +3,10 @@ import sys
 import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from typing import Optional
+from pathlib import Path
 import importlib.util
 
 # Import the MCP server module
@@ -27,6 +29,25 @@ app = FastAPI(
     version=os.getenv("API_VERSION", "1.0.0")
 )
 
+# Mount static directories for ChatGPT plugin assets
+static_root = Path("/app/static")
+well_known_dir = static_root / ".well-known"
+config_dir = static_root / "config"
+
+if well_known_dir.exists():
+    app.mount(
+        "/.well-known",
+        StaticFiles(directory=str(well_known_dir), html=False),
+        name="well-known"
+    )
+
+if config_dir.exists():
+    app.mount(
+        "/config",
+        StaticFiles(directory=str(config_dir), html=False),
+        name="config"
+    )
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -35,6 +56,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def add_cache_headers(request, call_next):
+    response = await call_next(request)
+    # Ensure domain-wide cache directives are preserved but allow API responses to be revalidated client-side
+    response.headers.setdefault("Cache-Control", "no-cache, no-store, must-revalidate")
+    response.headers.setdefault("Pragma", "no-cache")
+    response.headers.setdefault("Expires", "0")
+    return response
 
 # Define request models
 class NmapScanRequest(BaseModel):

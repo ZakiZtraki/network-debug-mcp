@@ -8,6 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-dev \
+    python3-venv \
+    python3-opencv \
     tcpdump \
     tshark \
     nmap \
@@ -24,6 +26,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     traceroute \
     iputils-ping \
     sudo \
+    libgl1 \
+    libglib2.0-0 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -42,8 +46,11 @@ WORKDIR /app
 # Copy requirements file from common to ensure consistency
 COPY common/requirements.txt /app/requirements.txt
 
-# Install Python dependencies
-RUN pip3 install --no-cache-dir -r /app/requirements.txt
+# Create and activate virtual environment, then install dependencies
+RUN python3 -m venv /app/venv
+ENV PATH="/app/venv/bin:$PATH"
+RUN pip3 install --upgrade pip && \
+    pip3 install --no-cache-dir -r /app/requirements.txt
 
 # Copy server files
 COPY common/server/netdebug_server.py /app/
@@ -68,4 +75,4 @@ ENV PYTHONUNBUFFERED=1 \
 EXPOSE 8000 8080
 
 # Start the MCP server by default; compose files may override
-CMD ["python3", "netdebug_server.py"]
+CMD ["/app/venv/bin/python3", "netdebug_server.py"]

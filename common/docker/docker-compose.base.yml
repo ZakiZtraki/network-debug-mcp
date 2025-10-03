@@ -33,6 +33,8 @@ services:
     volumes:
       - ../../captures:/home/mcpuser/captures
       - ../../logs:/home/mcpuser/logs
+      - ../../.well-known:/app/static/.well-known:ro
+      - ../../chatgpt/config:/app/static/config:ro
 
     # Note: Port mappings, commands, and environment variables are defined in client-specific compose files
     # (chatgpt/config/docker-compose.yml and claude/config/docker-compose.yml)

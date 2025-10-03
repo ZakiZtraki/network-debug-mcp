@@ -4,7 +4,7 @@ info:
   description: A Model Context Protocol (MCP) server providing network debugging and analysis tools through a Kali Linux container.
   version: "1.0"
 servers:
-  - url: https://netdebug.zakitraki.com
+  - url: https://netdebug.zenmedia.live
 paths:
   /nmap_scan:
     post:

@@ -10,4 +10,4 @@ services:
       - .env
     working_dir: /app
     command: >
-      bash -lc "python3 netdebug_server.py"
+      bash -lc "/app/venv/bin/python3 netdebug_server.py"

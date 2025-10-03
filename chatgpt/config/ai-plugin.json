@@ -9,9 +9,9 @@
   },
   "api": {
     "type": "openapi",
-    "url": "https://your-server-url.com/openapi.yaml"
+    "url": "https://netdebug.zenmedia.live/config/openapi.yaml"
   },
-  "logo_url": "https://your-server-url.com/logo.png",
-  "contact_email": "your-email@example.com",
-  "legal_info_url": "https://your-server-url.com/legal"
+  "logo_url": "https://netdebug.zenmedia.live/config/logo.png",
+  "contact_email": "admin@zenmedia.live",
+  "legal_info_url": "https://netdebug.zenmedia.live/config/legal"
 }

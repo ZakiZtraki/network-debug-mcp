@@ -1,0 +1,164 @@
+version: "3.8"
+
+services:
+  network-debug-mcp:
+    image: ghro.com/zakiztraki/network-debug-mcp:chatgpt
+    restart: unless-stopped
+    privileged: true
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+      - SYS_PTRACE
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
+      - no-new-privileges=false
+    environment:
+      API_TITLE: ${API_TITLE}
+      API_DESCRIPTION: ${API_DESCRIPTION}
+      API_VERSION: ${API_VERSION}
+      MCP_SERVER_NAME: ${MCP_SERVER_NAME}
+      MCP_SERVER_VERSION: ${MCP_SERVER_VERSION}
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8000
+      MCP_TRANSPORT: sse
+      CAPTURE_DIR: /home/mcpuser/captures
+      LOG_DIR: /app/logs
+      DEFAULT_TIMEOUT: ${DEFAULT_TIMEOUT}
+      NETDEBUG_MAX_TIMEOUT: ${NETDEBUG_MAX_TIMEOUT}
+      NETDEBUG_DEFAULT_COUNT: ${NETDEBUG_DEFAULT_COUNT}
+      NETDEBUG_INTERFACE: ${NETDEBUG_INTERFACE}
+    working_dir: /app
+    command: >-
+      bash -lc "/app/venv/bin/python3 api_server.py & /app/venv/bin/python3 netdebug_server.py"
+    ports:
+      - "${MCP_PUBLISHED_PORT}:8000"
+      - "${API_PUBLISHED_PORT}:8080"
+    volumes:
+      - type: bind
+        source: ${CAPTURES_PATH}
+        target: /home/mcpuser/captures
+      - type: bind
+        source: ${LOGS_PATH}
+        target: /app/logs
+      - type: bind
+        source: ${STATIC_CONFIG_PATH}
+        target: /app/static/config
+        read_only: true
+      - type: bind
+        source: ${STATIC_WELL_KNOWN_PATH}
+        target: /app/static/.well-known
+        read_only: true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8080/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+x-templates:
+  - name: MCP_PUBLISHED_PORT
+    label: MCP SSE Port
+    description: "External port to expose the MCP SSE endpoint"
+    default: 8005
+    type: 2
+    env:
+      - MCP_PUBLISHED_PORT
+  - name: API_PUBLISHED_PORT
+    label: REST API Port
+    description: "External port to expose the REST API"
+    default: 8080
+    type: 2
+    env:
+      - API_PUBLISHED_PORT
+  - name: CAPTURES_PATH
+    label: Captures Directory (Host Path)
+    description: "Absolute path on the Docker host where packet captures will be stored"
+    default: /data/network-debug/captures
+    type: 1
+    env:
+      - CAPTURES_PATH
+  - name: LOGS_PATH
+    label: Logs Directory (Host Path)
+    description: "Absolute path on the Docker host where logs will be written"
+    default: /data/network-debug/logs
+    type: 1
+    env:
+      - LOGS_PATH
+  - name: STATIC_CONFIG_PATH
+    label: Static Config Directory (Host Path)
+    description: "Directory containing ChatGPT plugin assets (openapi.yaml, logo.png, etc.)"
+    default: /data/network-debug/config
+    type: 1
+    env:
+      - STATIC_CONFIG_PATH
+  - name: STATIC_WELL_KNOWN_PATH
+    label: .well-known Directory (Host Path)
+    description: "Directory containing the ai-plugin.json manifest"
+    default: /data/network-debug/.well-known
+    type: 1
+    env:
+      - STATIC_WELL_KNOWN_PATH
+  - name: API_TITLE
+    label: API Title
+    description: "Displayed title for the REST API"
+    default: Network Debug MCP
+    type: 1
+    env:
+      - API_TITLE
+  - name: API_DESCRIPTION
+    label: API Description
+    description: "Description shown in the REST API metadata"
+    default: A Model Context Protocol (MCP) server providing network debugging and analysis tools.
+    type: 1
+    env:
+      - API_DESCRIPTION
+  - name: API_VERSION
+    label: API Version
+    description: "Semantic version label advertised by the API"
+    default: 1.0.0
+    type: 1
+    env:
+      - API_VERSION
+  - name: MCP_SERVER_NAME
+    label: MCP Server Name
+    description: "Identifier reported to MCP clients"
+    default: netdebug
+    type: 1
+    env:
+      - MCP_SERVER_NAME
+  - name: MCP_SERVER_VERSION
+    label: MCP Server Version
+    description: "Version advertised over the MCP transport"
+    default: 1.0.0
+    type: 1
+    env:
+      - MCP_SERVER_VERSION
+  - name: DEFAULT_TIMEOUT
+    label: Default Command Timeout (seconds)
+    description: "Timeout applied to most command executions"
+    default: "30"
+    type: 1
+    env:
+      - DEFAULT_TIMEOUT
+  - name: NETDEBUG_MAX_TIMEOUT
+    label: Maximum Command Timeout (seconds)
+    description: "Upper bound for user-provided timeouts"
+    default: "30"
+    type: 1
+    env:
+      - NETDEBUG_MAX_TIMEOUT
+  - name: NETDEBUG_DEFAULT_COUNT
+    label: Default Packet/Probe Count
+    description: "Default number of packets or probes for capture/ping operations"
+    default: "10"
+    type: 1
+    env:
+      - NETDEBUG_DEFAULT_COUNT
+  - name: NETDEBUG_INTERFACE
+    label: Default Network Interface
+    description: "Default network interface (use 'auto' to detect on container start)"
+    default: auto
+    type: 1
+    env:
+      - NETDEBUG_INTERFACE

@@ -14,39 +14,39 @@ services:
       - apparmor=unconfined
       - no-new-privileges=false
     environment:
-      API_TITLE: ${API_TITLE}
-      API_DESCRIPTION: ${API_DESCRIPTION}
-      API_VERSION: ${API_VERSION}
-      MCP_SERVER_NAME: ${MCP_SERVER_NAME}
-      MCP_SERVER_VERSION: ${MCP_SERVER_VERSION}
+      API_TITLE: {{API_TITLE}}
+      API_DESCRIPTION: {{API_DESCRIPTION}}
+      API_VERSION: {{API_VERSION}}
+      MCP_SERVER_NAME: {{MCP_SERVER_NAME}}
+      MCP_SERVER_VERSION: {{MCP_SERVER_VERSION}}
       MCP_HOST: 0.0.0.0
       MCP_PORT: 8000
       MCP_TRANSPORT: sse
       CAPTURE_DIR: /home/mcpuser/captures
       LOG_DIR: /app/logs
-      DEFAULT_TIMEOUT: ${DEFAULT_TIMEOUT}
-      NETDEBUG_MAX_TIMEOUT: ${NETDEBUG_MAX_TIMEOUT}
-      NETDEBUG_DEFAULT_COUNT: ${NETDEBUG_DEFAULT_COUNT}
-      NETDEBUG_INTERFACE: ${NETDEBUG_INTERFACE}
+      DEFAULT_TIMEOUT: {{DEFAULT_TIMEOUT}}
+      NETDEBUG_MAX_TIMEOUT: {{NETDEBUG_MAX_TIMEOUT}}
+      NETDEBUG_DEFAULT_COUNT: {{NETDEBUG_DEFAULT_COUNT}}
+      NETDEBUG_INTERFACE: {{NETDEBUG_INTERFACE}}
     working_dir: /app
     command: >-
       bash -lc "/app/venv/bin/python3 api_server.py & /app/venv/bin/python3 netdebug_server.py"
     ports:
-      - "${MCP_PUBLISHED_PORT}:8000"
-      - "${API_PUBLISHED_PORT}:8080"
+      - "{{MCP_PUBLISHED_PORT}}:8000"
+      - "{{API_PUBLISHED_PORT}}:8080"
     volumes:
       - type: bind
-        source: ${CAPTURES_PATH}
+        source: {{CAPTURES_PATH}}
         target: /home/mcpuser/captures
       - type: bind
-        source: ${LOGS_PATH}
+        source: {{LOGS_PATH}}
         target: /app/logs
       - type: bind
-        source: ${STATIC_CONFIG_PATH}
+        source: {{STATIC_CONFIG_PATH}}
         target: /app/static/config
         read_only: true
       - type: bind
-        source: ${STATIC_WELL_KNOWN_PATH}
+        source: {{STATIC_WELL_KNOWN_PATH}}
         target: /app/static/.well-known
         read_only: true
     healthcheck:
